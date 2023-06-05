@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "scypro-coursework-4"
+version = "0.1.0"
+description = ""
+authors = ["Sergey <e-box@live.ru>"]
+readme = "README.md"
+packages = [{include = "scypro_coursework_4"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
