@@ -8,6 +8,7 @@ packages = [{include = "scypro_coursework_4"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"
+requests = "^2.31.0"
 
 
 [build-system]
