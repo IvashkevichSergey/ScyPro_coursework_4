@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import requests
 from pprint import pprint
 import json
+from vacancies_handler import Vacancy
 
 
 class ParserAPI(ABC):
@@ -64,18 +65,24 @@ class SuperJobAPI(ParserAPI):
         # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
         while request['objects'] and params['page'] < 5:
             print(params['page'] + 1, '--->', len(request['objects']))
-            for item in request['objects']:
-                data.append(item)
+            for vacancy in request['objects']:
+                data.append(Vacancy(vacancy['profession'],
+                                    vacancy['link'],
+                                    vacancy['payment_from'],
+                                    vacancy['payment_to'],
+                                    vacancy['candidat']))
             params['page'] += 1
             request = requests.get('https://api.superjob.ru/2.0/vacancies/',
                                    params=params, headers=self.headers).json()
 
         # Записываем все найденные вакансии в новый файл
-        with open('new_file.json', 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        # with open('new_file.json', 'w', encoding='utf-8') as f:
+        #     json.dump(data, f, ensure_ascii=False, indent=2)
 
-        with open('new_file.json', 'r', encoding='utf-8') as f:
-            print(len(json.load(f)))
+        # with open('new_file.json', 'r', encoding='utf-8') as f:
+        #     print(len(json.load(f)))
+
+        return data
 
 
 class HeadHunterAPI(ParserAPI):
@@ -85,5 +92,7 @@ class HeadHunterAPI(ParserAPI):
 if __name__ == '__main__':
     superjob_api = SuperJobAPI()
     superjob_vacancies = superjob_api.get_vacancies("геолог керн")
+    for i in superjob_vacancies:
+        print(i)
 
 # response = requests.get('https://api.superjob.ru/2.0/vacancies/?keyword=Python&Java&count=100&page=6', headers=headers).json()
