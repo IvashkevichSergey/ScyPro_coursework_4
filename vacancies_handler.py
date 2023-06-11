@@ -4,7 +4,7 @@ import json
 class Vacancy:
     def __init__(self, vacancy_name, vacancy_url, salary_from, salary_to, job_description):
         self._vacancy_name = self.check_vacancy_name(vacancy_name)
-        self._salary = self.check_salary(salary_from, salary_to)
+        self._salary = (salary_from, salary_to)
         self._vacancy_url = vacancy_url
         self._job_description = self.check_job_description(job_description)
 
@@ -23,9 +23,11 @@ class Vacancy:
         return self._salary
 
     @staticmethod
-    def check_salary(salary_from, salary_to):
+    def print_salary(salary_from, salary_to):
         if not salary_from and not salary_to:
             return 'Зарплата не указана'
+        elif salary_to == salary_from:
+            return f'{salary_to}'
         elif salary_to and not salary_from:
             return f'До {salary_to} руб.'
         elif salary_from and not salary_to:
@@ -50,16 +52,31 @@ class Vacancy:
     def __repr__(self):
         return f'Наименование вакансии: {self.vacancy_name}\n' \
                f'Описание работы: {self.job_description}\n' \
-               f'Заработная плата: {self.salary}\n' \
+               f'Заработная плата: {self.print_salary(*self.salary)}\n' \
                f'Ссылка на вакансию: {self.vacancy_url}\n'
 
     def __call__(self):
         return {
             'Наименование вакансии': self.vacancy_name,
             'Описание работы': self.job_description,
-            'Заработная плата': self.salary,
+            'Заработная плата': self.print_salary(*self.salary),
             'Ссылка на вакансию': self.vacancy_url
                 }
+
+    def __lt__(self, other):
+        self_salary = self.salary[1] if self.salary[1] else self.salary[0]
+        other_salary = other.salary[1] if other.salary[1] else other.salary[0]
+        return self_salary < other_salary
+
+    def __le__(self, other):
+        self_salary = self.salary[1] if self.salary[1] else self.salary[0]
+        other_salary = other.salary[1] if other.salary[1] else other.salary[0]
+        return self_salary <= other_salary
+
+    def __eq__(self, other):
+        self_salary = self.salary[1] if self.salary[1] else self.salary[0]
+        other_salary = other.salary[1] if other.salary[1] else other.salary[0]
+        return self_salary == other_salary
 
 
 if __name__ == '__main__':
@@ -75,7 +92,6 @@ if __name__ == '__main__':
         job_description = item['vacancyRichText']
         vacancy = Vacancy(vacancy_name, vacancy_url, salary_from, salary_to, job_description)
         lst.append(vacancy())
-
 
     with open('search_result.json', 'w', encoding='utf-8') as f:
         json.dump(lst, f, ensure_ascii=False, indent=4)

@@ -60,17 +60,17 @@ class SuperJobAPI(ParserAPI):
         # Если вакансий не найдено - завершаем работу функции
         if not request['objects']:
             print('Вакансий по такому запросу не найдено')
-            return
+            return []
 
         # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
         while request['objects'] and params['page'] < 5:
             print(params['page'] + 1, '--->', len(request['objects']))
             for vacancy in request['objects']:
-                data.append(Vacancy(vacancy['profession'],
-                                    vacancy['link'],
-                                    vacancy['payment_from'],
-                                    vacancy['payment_to'],
-                                    vacancy['candidat']))
+                data.append(Vacancy(vacancy_name=vacancy['profession'],
+                                    vacancy_url=vacancy['link'],
+                                    salary_from=vacancy['payment_from'],
+                                    salary_to=vacancy['payment_to'],
+                                    job_description=vacancy['candidat']))
             params['page'] += 1
             request = requests.get('https://api.superjob.ru/2.0/vacancies/',
                                    params=params, headers=self.headers).json()
@@ -91,8 +91,15 @@ class HeadHunterAPI(ParserAPI):
 
 if __name__ == '__main__':
     superjob_api = SuperJobAPI()
-    superjob_vacancies = superjob_api.get_vacancies("геолог керн")
+    superjob_vacancies = superjob_api.get_vacancies("python разработчик")
     for i in superjob_vacancies:
         print(i)
+        print('>>>>>>>>>>>>>>>>>>>>>')
+
+    print(superjob_vacancies[0] > superjob_vacancies[1])
+    print(superjob_vacancies[1] <= superjob_vacancies[2])
+    print(superjob_vacancies[2] < superjob_vacancies[3])
+    print(superjob_vacancies[3] == superjob_vacancies[4])
+    print(superjob_vacancies[4] >= superjob_vacancies[5])
 
 # response = requests.get('https://api.superjob.ru/2.0/vacancies/?keyword=Python&Java&count=100&page=6', headers=headers).json()
