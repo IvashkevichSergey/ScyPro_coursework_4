@@ -1,0 +1,7 @@
+{
+  "access_token": "v3.r.131331406.d386ca982b5ff8523ecf72d580e0d227db352f41.c7e623d44f390218c25f6272ef4ef3d56850f9d0",
+  "refresh_token": "v3.r.131331406.3eca8a6354625acf406f97b57aa214fe7c9ee52b.ac4d6cc4cd824b85615e2b2442cda78697ae13c0",
+  "ttl": 1687262822,
+  "expires_in": 604800,
+  "token_type": "Bearer"
+}

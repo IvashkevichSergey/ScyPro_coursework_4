@@ -4,7 +4,7 @@ import json
 class Vacancy:
     def __init__(self, vacancy_name, vacancy_url, salary_from, salary_to, job_description):
         self._vacancy_name = self.check_vacancy_name(vacancy_name)
-        self._salary = (salary_from, salary_to)
+        self._salary = (salary_from if salary_from else 0, salary_to if salary_to else 0)
         self._vacancy_url = vacancy_url
         self._job_description = self.check_job_description(job_description)
 
@@ -64,19 +64,13 @@ class Vacancy:
                 }
 
     def __lt__(self, other):
-        self_salary = self.salary[1] if self.salary[1] else self.salary[0]
-        other_salary = other.salary[1] if other.salary[1] else other.salary[0]
-        return self_salary < other_salary
+        return max(self.salary) < max(other.salary)
 
     def __le__(self, other):
-        self_salary = self.salary[1] if self.salary[1] else self.salary[0]
-        other_salary = other.salary[1] if other.salary[1] else other.salary[0]
-        return self_salary <= other_salary
+        return max(self.salary) <= max(other.salary)
 
     def __eq__(self, other):
-        self_salary = self.salary[1] if self.salary[1] else self.salary[0]
-        other_salary = other.salary[1] if other.salary[1] else other.salary[0]
-        return self_salary == other_salary
+        return max(self.salary) == max(other.salary)
 
 
 if __name__ == '__main__':

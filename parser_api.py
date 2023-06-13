@@ -1,7 +1,6 @@
 import os
 from abc import ABC, abstractmethod
 import requests
-from pprint import pprint
 import json
 from vacancies_handler import Vacancy
 
@@ -11,95 +10,181 @@ class ParserAPI(ABC):
 
 
 class SuperJobAPI(ParserAPI):
-    # Словарь с параметрами для получения токена
-    _params = {
-        'code': '5bce8afac323d5103bdec5427f780e2019954e12256c7524dd9586e0ba59e511.8a408c62156de2c1259c58bd3629b52dc3f3ad99',
-        'redirect_uri': 'http://www.example.ru',
-        'client_id': 2551,
-        'client_secret': 'v3.r.131331406.ddf3dd48314bb05b354e7a90398237055723873f.571b102b302047db1cdd5d3bc7d20bdfc348337f'}
+    CONFIG_FILE = os.path.abspath('config_files/SJru_config.json')
 
     def __init__(self):
-        self.access_token = self.get_token()
         self.headers = {'Host': 'api.superjob.ru',
-                        'X-Api-App-Id': SuperJobAPI._params['client_secret'],
-                        'Authorization': f'Bearer {self.access_token}',
+                        'X-Api-App-Id': 'v3.r.131331406.ddf3dd48314bb05b354e7a90398237055723873f.571b102b302047db1cdd5d3bc7d20bdfc348337f',
+                        'Authorization': f'Bearer {self.get_token()}',
                         'Content-Type': 'application/x-www-form-urlencoded'
                         }
 
-    @staticmethod
-    def get_token():
+    def get_token(self):
         """
-        Статичный метод для получения токена в том случае, если он ещё не получен
+        Метод возвращает значение токена.
         """
-        # Если файл с токеном не существует, запрашиваем его один раз
-        if not os.path.isfile('config.json'):
-            response = requests.get('https://api.superjob.ru/2.0/oauth2/access_token/',
-                                    params=SuperJobAPI._params).json()
-            # Словарь с токеном сохраняем в отдельный файл
-            with open('config.json', 'w', encoding='utf-8') as f:
-                json.dump(response, f, ensure_ascii=False, indent=2)
+        with open(self.CONFIG_FILE, encoding='utf-8') as config_file:
+            return json.load(config_file)['access_token']
 
-        # Получаем значение токена из файла
-        with open('config.json', encoding='utf-8') as f:
-            data = json.load(f)
-            return data['access_token']
+    def refresh_token(self):
+        """
+        Метод для обновления токена в том случае, если при запросе на API получена ошибка 410
+        """
+        # Получаем значение refresh токена из файла
+        with open(self.CONFIG_FILE, encoding='utf-8') as config_file:
+            refresh_token = json.load(config_file)['refresh_token']
+
+        # Создаём новый словарь с параметрами для отправки на API
+        refresh_params = {
+            'refresh_token': refresh_token,
+            'client_id': 2551,
+            'client_secret': self.headers['X-Api-App-Id']
+        }
+
+        # Выполняем запрос на обновление токена
+        response_for_new_token = requests.get('https://api.superjob.ru/2.0/oauth2/refresh_token/',
+                                              params=refresh_params).json()
+        # Словарь с токеном пересохраняем в файл
+        with open(self.CONFIG_FILE, 'w', encoding='utf-8') as config_file:
+            json.dump(response_for_new_token, config_file, ensure_ascii=False, indent=2)
+
+        # Обновляем токен в словаре headers
+        self.headers['Authorization'] = f'Bearer {response_for_new_token["access_token"]}'
 
     def get_vacancies(self, vacancy):
         """
         Метод для формирования файла со списком вакансий по ключевому слову
         """
-        # Создаём временную переменную для хранения словарей с вакансиями
-        data = []
         # Словарь с параметрами для поискового запроса
-        params = {'keyword': vacancy,
-                  'count': 100,
-                  'page': 0}
+        search_params = {'keyword': vacancy,
+                         'count': 100,
+                         'page': 0}
         request = requests.get('https://api.superjob.ru/2.0/vacancies/',
-                               params=params, headers=self.headers).json()
+                               params=search_params, headers=self.headers).json()
 
-        # Если вакансий не найдено - завершаем работу функции
+        # Если ответом сервера стала ошибка 410, то запускаем функцию обновления токена
+        # и повторно запускаем функцию get_vacancies
+        if request.get('error'):
+            if request.get('error').get('code') == 410:
+                self.refresh_token()
+                return self.get_vacancies(vacancy)
+
+        # Если вакансий не найдено - функция возвращает пустой список
         if not request['objects']:
             print('Вакансий по такому запросу не найдено')
             return []
 
+        # Создаём переменную для хранения вакансий - объектов класса Vacancy
+        data = []
         # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
-        while request['objects'] and params['page'] < 5:
-            print(params['page'] + 1, '--->', len(request['objects']))
+        while request['objects'] and search_params['page'] < 5:
+            print(search_params['page'] + 1, '--->', len(request['objects']))
             for vacancy in request['objects']:
                 data.append(Vacancy(vacancy_name=vacancy['profession'],
                                     vacancy_url=vacancy['link'],
                                     salary_from=vacancy['payment_from'],
                                     salary_to=vacancy['payment_to'],
                                     job_description=vacancy['candidat']))
-            params['page'] += 1
+            search_params['page'] += 1
             request = requests.get('https://api.superjob.ru/2.0/vacancies/',
-                                   params=params, headers=self.headers).json()
-
-        # Записываем все найденные вакансии в новый файл
-        # with open('new_file.json', 'w', encoding='utf-8') as f:
-        #     json.dump(data, f, ensure_ascii=False, indent=2)
-
-        # with open('new_file.json', 'r', encoding='utf-8') as f:
-        #     print(len(json.load(f)))
-
+                                   params=search_params, headers=self.headers).json()
+        print(len(data))
         return data
 
 
 class HeadHunterAPI(ParserAPI):
-    pass
+    CONFIG_FILE = os.path.abspath('config_files/HHru_config.json')
+
+    def __init__(self):
+        self.headers = {'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': f'Bearer {self.get_token()}'}
+
+    def get_token(self):
+        """
+        Метод возвращает значение токена.
+        """
+        with open(self.CONFIG_FILE, encoding='utf-8') as config_file:
+            return json.load(config_file)['access_token']
+
+    def refresh_token(self):
+        """
+        Метод для обновления токена в том случае, если при запросе на API получена ошибка 410
+        """
+        # Получаем значение refresh токена из файла
+        with open(self.CONFIG_FILE, encoding='utf-8') as config_file:
+            refresh_token = json.load(config_file)['refresh_token']
+
+        # Создаём новые словари с параметрами и с заголовками для отправки на API
+        refresh_params = {'refresh_token': refresh_token,
+                          'grant_type': 'refresh_token'}
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+        # Выполняем запрос на обновление токена
+        response_for_new_token = requests.post('https://hh.ru/oauth/token',
+                                               params=refresh_params, headers=headers).json()
+
+        # Словарь с токеном пересохраняем в файл
+        with open(self.CONFIG_FILE, 'w', encoding='utf-8') as config_file:
+            json.dump(response_for_new_token, config_file, ensure_ascii=False, indent=2)
+
+        # Обновляем токен в словаре headers
+        self.headers['Authorization'] = f'Bearer {response_for_new_token["access_token"]}'
+
+    def get_vacancies(self, vacancy):
+        """
+        Метод для формирования файла со списком вакансий по ключевому слову
+        """
+        # Словарь с параметрами для поискового запроса
+        search_params = {'text': vacancy,
+                         'per_page': 100,
+                         'page': 0}
+
+        response = requests.get('https://api.hh.ru/vacancies', params=search_params, headers=self.headers).json()
+
+        # Если ответом сервера стала ошибка 410, то запускаем функцию обновления токена
+        # и повторно запускаем функцию get_vacancies
+        if response.get('error'):
+            if response.get('error').get('code') == 410:
+                self.refresh_token()
+                return self.get_vacancies(vacancy)
+
+        # Если вакансий не найдено - функция возвращает пустой список
+        if not response['items']:
+            print('Вакансий по такому запросу не найдено')
+            return []
+
+        # Создаём переменную для хранения вакансий - объектов класса Vacancy
+        data = []
+        # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
+        while search_params['page'] < 20 and response['items']:
+            print(search_params['page'] + 1, '--->', len(response['items']))
+            # with open('temp.json', 'w', encoding='utf-8') as f:
+            #     json.dump(response['items'], f, ensure_ascii=False, indent=2)
+            for vacancy in response['items']:
+                data.append(Vacancy(vacancy_name=vacancy['name'],
+                                    vacancy_url=vacancy['url'],
+                                    salary_from=None if not vacancy.get('salary') else vacancy.get('salary').get('from'),
+                                    salary_to=None if not vacancy.get('salary') else vacancy.get('salary').get('to'),
+                                    job_description=vacancy['snippet']['responsibility']))
+            search_params['page'] += 1
+            response = requests.get('https://api.hh.ru/vacancies', params=search_params, headers=self.headers).json()
+        print(len(data))
+        return data
 
 
 if __name__ == '__main__':
-    superjob_api = SuperJobAPI()
-    superjob_vacancies = superjob_api.get_vacancies("python разработчик")
-    for i in superjob_vacancies:
-        print(i)
-        print('>>>>>>>>>>>>>>>>>>>>>')
 
-    print(superjob_vacancies[0] > superjob_vacancies[1])
-    print(superjob_vacancies[1] <= superjob_vacancies[2])
-    print(superjob_vacancies[2] < superjob_vacancies[3])
-    print(superjob_vacancies[3] == superjob_vacancies[4])
-    print(superjob_vacancies[4] >= superjob_vacancies[5])
+    some_params = {'grant_type': 'authorization_code'}
 
-# response = requests.get('https://api.superjob.ru/2.0/vacancies/?keyword=Python&Java&count=100&page=6', headers=headers).json()
+    # data = []
+    # # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
+    # while search_params['page'] < 20 and response['items']:
+    #     print(search_params['page'] + 1, '--->', len(response['items']))
+    #     for vacancy in response['items']:
+    #         data.append(vacancy)
+    #     search_params['page'] += 1
+    #     response = requests.get('https://api.hh.ru/vacancies/',
+    #                             params=search_params, headers=headers).json()
+    # print(len(data))
+    # with open('temp.json', 'w', encoding='utf-8') as f:
+    #     json.dump(data, f, ensure_ascii=False, indent=2)
