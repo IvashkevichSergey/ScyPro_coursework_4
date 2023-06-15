@@ -72,16 +72,11 @@ class SuperJobAPI(ParserAPI):
                 self.refresh_token()
                 return self.get_vacancies(vacancy)
 
-        # Если вакансий не найдено - функция возвращает пустой список
-        if not response['objects']:
-            print('Вакансий по такому запросу не найдено')
-            return []
-
         # Создаём переменную для хранения вакансий - объектов класса Vacancy
         data = []
         # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
+        print('Идёт поиск на сайте SuperJob.ru...', end='')
         while response['objects'] and search_params['page'] < 5:
-            print(search_params['page'] + 1, '--->', len(response['objects']))
             for vacancy in response['objects']:
                 data.append(Vacancy(vacancy_name=vacancy['profession'],
                                     vacancy_url=vacancy['link'],
@@ -91,7 +86,8 @@ class SuperJobAPI(ParserAPI):
             search_params['page'] += 1
             response = requests.get('https://api.superjob.ru/2.0/vacancies/',
                                    params=search_params, headers=self.headers).json()
-        print(len(data))
+            print('.', end='')
+        print(f'\nНа сайте SuperJob.ru по Вашему запросу найдено {len(data)} вакансий')
         return data
 
 
@@ -108,16 +104,11 @@ class HeadHunterAPI(ParserAPI):
 
         response = requests.get('https://api.hh.ru/vacancies', params=search_params).json()
 
-        # Если вакансий не найдено - функция возвращает пустой список
-        if not response['items']:
-            print('Вакансий по такому запросу не найдено')
-            return []
-
         # Создаём переменную для хранения вакансий - объектов класса Vacancy
         data = []
         # Проходим по всем страницам с искомым запросом и сохраняем все вакансии в список
+        print('Идёт поиск на сайте HeadHunter.ru...', end='')
         while search_params['page'] < 20 and response['items']:
-            print(search_params['page'] + 1, '--->', len(response['items']))
             # with open('temp.json', 'w', encoding='utf-8') as f:
             #     json.dump(response['items'], f, ensure_ascii=False, indent=2)
             for vacancy in response['items']:
@@ -129,7 +120,8 @@ class HeadHunterAPI(ParserAPI):
                                     job_description=vacancy['snippet']['responsibility']))
             search_params['page'] += 1
             response = requests.get('https://api.hh.ru/vacancies', params=search_params).json()
-        print(len(data))
+            print('.', end='')
+        print(f'\nНа сайте SuperJob.ru по Вашему запросу найдено {len(data)} вакансий')
         return data
 
 

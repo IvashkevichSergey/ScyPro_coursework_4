@@ -37,7 +37,7 @@ class JSONSaver:
             data.extend(vacancies_to_save)
             self.dump_data_to_json(data)
 
-    def get_vacancy(self) -> list:
+    def get_all_vacancies(self) -> list:
         """
         Метод загружает из файла все вакансии, оборачивает каждую вакансию в объект
         класса Vacancy и возвращает список c этими объектами
@@ -75,7 +75,7 @@ class JSONSaver:
         Метод отсекает вакансии ниже указанной зарплате.
         Возвращает список с отфильтрованными по зарплате вакансиями.
         """
-        all_vacancies = self.get_vacancy()
+        all_vacancies = self.get_all_vacancies()
         vacancies_filtered_by_salary = []
         for vacancy in all_vacancies:
             if max(vacancy.salary) >= salary_from:
@@ -89,7 +89,7 @@ class JSONSaver:
         Возвращает список с отфильтрованными вакансиями.
         """
         keywords = keywords.split()
-        list_with_vacancies = self.get_vacancy()
+        list_with_vacancies = self.get_all_vacancies()
         vacancies_to_delete = []
         for vacancy in list_with_vacancies:
             for word in keywords:
