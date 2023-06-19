@@ -1,4 +1,4 @@
-from vacancies_handler import Vacancy
+from parser_utils.vacancies_handler import Vacancy
 import json
 import os
 
@@ -33,6 +33,7 @@ class JSONSaver:
         if not os.path.isfile(self.PATH_TO_FILE) or mode == 'rewrite':
             self.dump_data_to_json(vacancies_to_save)
         else:
+            print('NOT REWRITE MODE')
             data = self.load_data_from_json()
             data.extend(vacancies_to_save)
             self.dump_data_to_json(data)
@@ -76,26 +77,21 @@ class JSONSaver:
         Возвращает список с отфильтрованными по зарплате вакансиями.
         """
         all_vacancies = self.get_all_vacancies()
-        vacancies_filtered_by_salary = []
-        for vacancy in all_vacancies:
-            if max(vacancy.salary) >= salary_from:
-                vacancies_filtered_by_salary.append(vacancy)
-        return vacancies_filtered_by_salary
+        return [vacancy for vacancy in all_vacancies if max(vacancy.salary) >= salary_from]
 
-    def delete_vacancy_by_keywords(self, keywords: str) -> list:
+    def delete_vacancy_by_keywords(self, keywords: list) -> list:
         """
-        Метод принимает строку с ключевыми словами, проверяет наличие этих слов в описании либо названии каждой
+        Метод принимает список с ключевыми словами, проверяет наличие этих слов в описании либо названии каждой
         вакансии и оставляет только те вакансии, в которых ключевые слова не встречаются.
         Возвращает список с отфильтрованными вакансиями.
         """
-        keywords = keywords.split()
-        list_with_vacancies = self.get_all_vacancies()
+        all_vacancies = self.get_all_vacancies()
         vacancies_to_delete = []
-        for vacancy in list_with_vacancies:
+        for vacancy in all_vacancies:
             for word in keywords:
                 if word in vacancy.vacancy_name or word in vacancy.job_description:
                     vacancies_to_delete.append(vacancy.vacancy_url)
                     break
 
-        return [vacancy for vacancy in list_with_vacancies if vacancy.vacancy_url not in vacancies_to_delete]
+        return [vacancy for vacancy in all_vacancies if vacancy.vacancy_url not in vacancies_to_delete]
 
